@@ -1,2 +1,0 @@
-- Folder `src` contains application source code (JavaScript/TypeScript).
-- Folder `webpack` contains [webpack](https://webpack.js.org/) settings for the application.

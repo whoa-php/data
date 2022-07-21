@@ -21,7 +21,9 @@ declare (strict_types=1);
 
 namespace Whoa\Tests\Data\Data;
 
-use Doctrine\DBAL\DBALException;
+use Doctrine\DBAL\Exception as DBALException;
+use Psr\Container\ContainerExceptionInterface;
+use Psr\Container\NotFoundExceptionInterface;
 use Whoa\Contracts\Data\MigrationInterface;
 use Whoa\Data\Migrations\MigrationTrait;
 
@@ -35,27 +37,28 @@ class TestTableMigration implements MigrationInterface
     /**
      * @var string
      */
-    private $modelClass;
+    private string $modelClass;
 
     /**
      * @var array
      */
-    private $columns;
+    private array $columns;
 
     /**
      * @param string $modelClass
-     * @param array  $columns
+     * @param array $columns
      */
     public function __construct(string $modelClass, array $columns)
     {
         $this->modelClass = $modelClass;
-        $this->columns    = $columns;
+        $this->columns = $columns;
     }
 
     /**
      * @inheritdoc
-     *
      * @throws DBALException
+     * @throws ContainerExceptionInterface
+     * @throws NotFoundExceptionInterface
      */
     public function migrate(): void
     {
@@ -64,6 +67,8 @@ class TestTableMigration implements MigrationInterface
 
     /**
      * @inheritdoc
+     * @throws ContainerExceptionInterface
+     * @throws NotFoundExceptionInterface
      */
     public function rollback(): void
     {

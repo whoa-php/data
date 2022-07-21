@@ -22,6 +22,8 @@ declare (strict_types=1);
 namespace Whoa\Tests\Data\Data;
 
 use Closure;
+use Psr\Container\ContainerExceptionInterface;
+use Psr\Container\NotFoundExceptionInterface;
 use Whoa\Contracts\Container\ContainerInterface;
 
 /**
@@ -29,7 +31,7 @@ use Whoa\Contracts\Container\ContainerInterface;
  */
 class TestContainer implements ContainerInterface
 {
-    private $data = [];
+    private array $data = [];
 
     /**
      * @inheritdoc
@@ -51,7 +53,7 @@ class TestContainer implements ContainerInterface
     /**
      * @inheritdoc
      */
-    public function has($id)
+    public function has($id): bool
     {
         return array_key_exists($id, $this->data);
     }
@@ -59,13 +61,17 @@ class TestContainer implements ContainerInterface
     /**
      * @inheritdoc
      */
-    public function offsetExists($offset)
+    public function offsetExists($offset): bool
     {
         return $this->has($offset);
     }
 
     /**
      * @inheritdoc
+     * @param $offset
+     * @return mixed
+     * @throws NotFoundExceptionInterface
+     * @throws ContainerExceptionInterface
      */
     public function offsetGet($offset)
     {

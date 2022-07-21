@@ -34,7 +34,6 @@ class EnumTypeTest extends TestCase
 {
     /**
      * Test SQL declaration.
-     *
      * @throws DBALException
      */
     public function testSqlDeclaration()
@@ -47,7 +46,7 @@ class EnumTypeTest extends TestCase
         $type = Type::getType(EnumType::TYPE_NAME);
         $this->assertEquals(EnumType::TYPE_NAME, $type->getName());
 
-        $platform   = Mockery::mock(AbstractPlatform::class);
+        $platform = Mockery::mock(AbstractPlatform::class);
         $quoteValue = function (string $value): string {
             return "'$value'";
         };

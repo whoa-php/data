@@ -24,16 +24,20 @@ namespace Whoa\Data\Seeds;
 use Closure;
 use DateTimeImmutable;
 use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\Driver\Exception as DBALDriverException;
 use Doctrine\DBAL\Exception as DBALException;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\DBAL\Schema\AbstractSchemaManager;
 use Doctrine\DBAL\Types\Type;
 use Exception;
+use Psr\Container\ContainerExceptionInterface;
+use Psr\Container\NotFoundExceptionInterface;
 use Whoa\Contracts\Data\ModelSchemaInfoInterface;
 use Whoa\Contracts\Data\SeedInterface;
 use Whoa\Doctrine\Traits\UuidTypeTrait;
 use PDO;
 use Psr\Container\ContainerInterface;
+
 use function array_key_exists;
 use function assert;
 
@@ -47,7 +51,7 @@ trait SeedTrait
     /**
      * @var ContainerInterface
      */
-    private $container;
+    private ContainerInterface $container;
 
     /**
      * @inheritdoc
@@ -57,9 +61,7 @@ trait SeedTrait
         $this->container = $container;
 
         /** @var SeedInterface $self */
-        $self = $this;
-
-        return $self;
+        return $this;
     }
 
     /**
@@ -72,6 +74,8 @@ trait SeedTrait
 
     /**
      * @return Connection
+     * @throws ContainerExceptionInterface
+     * @throws NotFoundExceptionInterface
      */
     protected function getConnection(): Connection
     {
@@ -82,6 +86,8 @@ trait SeedTrait
 
     /**
      * @return ModelSchemaInfoInterface
+     * @throws ContainerExceptionInterface
+     * @throws NotFoundExceptionInterface
      */
     protected function getModelSchemas(): ModelSchemaInfoInterface
     {
@@ -92,6 +98,8 @@ trait SeedTrait
 
     /**
      * @return AbstractSchemaManager
+     * @throws ContainerExceptionInterface
+     * @throws NotFoundExceptionInterface
      */
     protected function getSchemaManager(): AbstractSchemaManager
     {
@@ -100,23 +108,23 @@ trait SeedTrait
 
     /**
      * @return string
-     *
-     * @throws Exception
+     * @throws ContainerExceptionInterface
+     * @throws NotFoundExceptionInterface
      */
     protected function now(): string
     {
         $format = $this->getSchemaManager()->getDatabasePlatform()->getDateTimeFormatString();
-        $now    = (new DateTimeImmutable())->format($format);
-
-        return $now;
+        return (new DateTimeImmutable())->format($format);
     }
 
     /**
-     * @param string   $tableName
+     * @param string $tableName
      * @param null|int $limit
-     *
      * @return array
+     * @throws ContainerExceptionInterface
      * @throws DBALException
+     * @throws NotFoundExceptionInterface
+     * @throws DBALDriverException
      */
     protected function readTableData(string $tableName, int $limit = null): array
     {
@@ -129,16 +137,17 @@ trait SeedTrait
 
         $limit === null ?: $builder->setMaxResults($limit);
 
-        $result = $builder->execute()->fetchAllAssociative();
-
-        return $result;
+        return $builder->execute()->fetchAllAssociative();
     }
 
     /**
-     * @param string   $modelClass
+     * @param string $modelClass
      * @param null|int $limit
-     *
      * @return array
+     * @throws ContainerExceptionInterface
+     * @throws DBALDriverException
+     * @throws DBALException
+     * @throws NotFoundExceptionInterface
      */
     protected function readModelsData(string $modelClass, int $limit = null): array
     {
@@ -146,17 +155,21 @@ trait SeedTrait
     }
 
     /**
-     * @param int     $records
-     * @param string  $tableName
+     * @param int $records
+     * @param string $tableName
      * @param Closure $dataClosure
-     * @param array   $columnTypes
-     *
+     * @param array $columnTypes
      * @return void
-     *
+     * @throws ContainerExceptionInterface
      * @throws DBALException
+     * @throws NotFoundExceptionInterface
      */
-    protected function seedTableData(int $records, $tableName, Closure $dataClosure, array $columnTypes = []): void
-    {
+    protected function seedTableData(
+        int $records,
+        string $tableName,
+        Closure $dataClosure,
+        array $columnTypes = []
+    ): void {
         $attributeTypeGetter = $this->createAttributeTypeGetter($columnTypes);
 
         $connection = $this->getConnection();
@@ -166,13 +179,13 @@ trait SeedTrait
     }
 
     /**
-     * @param int     $records
-     * @param string  $modelClass
+     * @param int $records
+     * @param string $modelClass
      * @param Closure $dataClosure
-     *
      * @return void
-     *
+     * @throws ContainerExceptionInterface
      * @throws DBALException
+     * @throws NotFoundExceptionInterface
      */
     protected function seedModelsData(int $records, string $modelClass, Closure $dataClosure): void
     {
@@ -183,12 +196,12 @@ trait SeedTrait
 
     /**
      * @param string $tableName
-     * @param array  $data
-     * @param array  $columnTypes
-     *
+     * @param array $data
+     * @param array $columnTypes
      * @return void
-     *
+     * @throws ContainerExceptionInterface
      * @throws DBALException
+     * @throws NotFoundExceptionInterface
      */
     protected function seedRowData(string $tableName, array $data, array $columnTypes = []): void
     {
@@ -199,11 +212,11 @@ trait SeedTrait
 
     /**
      * @param string $modelClass
-     * @param array  $data
-     *
+     * @param array $data
      * @return void
-     *
+     * @throws ContainerExceptionInterface
      * @throws DBALException
+     * @throws NotFoundExceptionInterface
      */
     protected function seedModelData(string $modelClass, array $data): void
     {
@@ -214,6 +227,8 @@ trait SeedTrait
 
     /**
      * @return string
+     * @throws ContainerExceptionInterface
+     * @throws NotFoundExceptionInterface
      */
     protected function getLastInsertId(): string
     {
@@ -221,41 +236,38 @@ trait SeedTrait
     }
 
     /**
-     * @param string     $tableName
+     * @param string $tableName
      * @param Connection $connection
-     * @param array      $data
-     * @param Closure    $getColumnType
-     *
+     * @param array $data
+     * @param Closure $getColumnType
      * @return void
-     *
      * @throws DBALException
      */
-    private function insertRow($tableName, Connection $connection, array $data, Closure $getColumnType): void
+    private function insertRow(string $tableName, Connection $connection, array $data, Closure $getColumnType): void
     {
-        $types        = [];
+        $types = [];
         $quotedFields = [];
         foreach ($data as $column => $value) {
-            $name                = $connection->quoteIdentifier($column);
+            $name = $connection->quoteIdentifier($column);
             $quotedFields[$name] = $value;
-            $types[$name]        = $getColumnType($column);
+            $types[$name] = $getColumnType($column);
         }
 
         try {
             $result = $connection->insert($tableName, $quotedFields, $types);
             assert($result !== false, 'Insert failed');
-        } /** @noinspection PhpRedundantCatchClauseInspection */ catch (UniqueConstraintViolationException $e) {
+        } catch (UniqueConstraintViolationException $e) {
             // ignore non-unique records
         }
     }
 
     /**
      * @param array $attributeTypes
-     *
      * @return Closure
      */
     private function createAttributeTypeGetter(array $attributeTypes): Closure
     {
-        return function (string $attributeType) use ($attributeTypes) : string {
+        return function (string $attributeType) use ($attributeTypes): string {
             return array_key_exists($attributeType, $attributeTypes) === true ?
                 $attributeTypes[$attributeType] : Type::STRING;
         };

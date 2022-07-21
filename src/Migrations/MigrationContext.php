@@ -1,9 +1,8 @@
-<?php declare (strict_types = 1);
-
-namespace Whoa\Data\Migrations;
+<?php
 
 /**
- * Copyright 2015-2019 info@neomerx.com
+ * Copyright 2015-2020 info@neomerx.com
+ * Modification Copyright 2021-2022 info@whoaphp.com
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +17,10 @@ namespace Whoa\Data\Migrations;
  * limitations under the License.
  */
 
+declare (strict_types=1);
+
+namespace Whoa\Data\Migrations;
+
 use Whoa\Contracts\Data\ModelSchemaInfoInterface;
 use Whoa\Data\Contracts\MigrationContextInterface;
 
@@ -29,20 +32,20 @@ class MigrationContext implements MigrationContextInterface
     /**
      * @var string
      */
-    private $modelClass;
+    private string $modelClass;
 
     /**
      * @var ModelSchemaInfoInterface
      */
-    private $modelSchemas;
+    private ModelSchemaInfoInterface $modelSchemas;
 
     /**
-     * @param string                   $modelClass
+     * @param string $modelClass
      * @param ModelSchemaInfoInterface $modelSchemas
      */
     public function __construct(string $modelClass, ModelSchemaInfoInterface $modelSchemas)
     {
-        $this->modelClass   = $modelClass;
+        $this->modelClass = $modelClass;
         $this->modelSchemas = $modelSchemas;
     }
 

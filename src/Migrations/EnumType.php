@@ -23,6 +23,7 @@ namespace Whoa\Data\Migrations;
 
 use Doctrine\DBAL\Platforms\AbstractPlatform;
 use Doctrine\DBAL\Types\Type;
+
 use function array_key_exists;
 use function array_map;
 use function assert;
@@ -34,20 +35,20 @@ use function implode;
 class EnumType extends Type
 {
     /** Type name */
-    const TYPE_NAME = 'EnumValues';
+    public const TYPE_NAME = 'EnumValues';
 
     /**
      * @inheritdoc
      */
-    public function getSQLDeclaration(array $fieldDeclaration, AbstractPlatform $platform)
+    public function getSQLDeclaration(array $column, AbstractPlatform $platform)
     {
         assert(
-            array_key_exists(static::TYPE_NAME, $fieldDeclaration),
+            array_key_exists(static::TYPE_NAME, $column),
             'Enum values are not set. Use `Column::setCustomSchemaOption` to set them.'
         );
-        $values = $fieldDeclaration[static::TYPE_NAME];
+        $values = $column[static::TYPE_NAME];
 
-        $quotedValues = array_map(function (string $value) use ($platform, $values) : string {
+        $quotedValues = array_map(function (string $value) use ($platform, $values): string {
             return $platform->quoteStringLiteral($value);
         }, $values);
 
@@ -59,7 +60,7 @@ class EnumType extends Type
     /**
      * @inheritdoc
      */
-    public function getName()
+    public function getName(): string
     {
         return self::TYPE_NAME;
     }

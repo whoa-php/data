@@ -23,29 +23,29 @@ namespace Whoa\Data\Migrations;
 
 use Doctrine\DBAL\Platforms\AbstractPlatform;
 use Doctrine\DBAL\Types\Type;
+
 use function array_key_exists;
 use function assert;
 
 /**
  * The type could be used for referring custom database types in table columns.
- *
  * @package Whoa\Data
  */
 class RawNameType extends Type
 {
     /** Type name */
-    const TYPE_NAME = 'RawName';
+    public const TYPE_NAME = 'RawName';
 
     /**
      * @inheritdoc
      */
-    public function getSQLDeclaration(array $fieldDeclaration, AbstractPlatform $platform)
+    public function getSQLDeclaration(array $column, AbstractPlatform $platform)
     {
         assert(
-            array_key_exists(static::TYPE_NAME, $fieldDeclaration),
+            array_key_exists(static::TYPE_NAME, $column),
             'Raw type name is not set. Use `Column::setCustomSchemaOption` to set the name.'
         );
-        $rawName = $fieldDeclaration[static::TYPE_NAME];
+        $rawName = $column[static::TYPE_NAME];
         assert(empty($rawName) === false);
 
         return $rawName;
@@ -54,7 +54,7 @@ class RawNameType extends Type
     /**
      * @inheritdoc
      */
-    public function getName()
+    public function getName(): string
     {
         return self::TYPE_NAME;
     }

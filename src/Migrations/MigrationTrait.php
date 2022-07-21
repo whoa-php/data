@@ -28,6 +28,8 @@ use Doctrine\DBAL\Schema\AbstractSchemaManager;
 use Doctrine\DBAL\Schema\Table;
 use Doctrine\DBAL\Types\Type;
 use Doctrine\DBAL\Types\Types;
+use Psr\Container\ContainerExceptionInterface;
+use Psr\Container\NotFoundExceptionInterface;
 use Whoa\Contracts\Data\MigrationInterface;
 use Whoa\Contracts\Data\ModelSchemaInfoInterface;
 use Whoa\Contracts\Data\RelationshipTypes;
@@ -36,6 +38,7 @@ use Whoa\Contracts\Data\UuidFields;
 use Whoa\Data\Contracts\MigrationContextInterface;
 use Whoa\Doctrine\Types\UuidType;
 use Psr\Container\ContainerInterface;
+
 use function array_key_exists;
 use function assert;
 use function call_user_func;
@@ -50,12 +53,12 @@ trait MigrationTrait
     /**
      * @var ContainerInterface
      */
-    private $container;
+    private ContainerInterface $container;
 
     /**
      * @var array
      */
-    private $enumerations = [];
+    private array $enumerations = [];
 
     /**
      * @inheritdoc
@@ -65,9 +68,7 @@ trait MigrationTrait
         $this->container = $container;
 
         /** @var MigrationInterface $self */
-        $self = $this;
-
-        return $self;
+        return $this;
     }
 
     /**
@@ -80,6 +81,8 @@ trait MigrationTrait
 
     /**
      * @return Connection
+     * @throws ContainerExceptionInterface
+     * @throws NotFoundExceptionInterface
      */
     protected function getConnection(): Connection
     {
@@ -90,6 +93,8 @@ trait MigrationTrait
 
     /**
      * @return ModelSchemaInfoInterface
+     * @throws ContainerExceptionInterface
+     * @throws NotFoundExceptionInterface
      */
     protected function getModelSchemas(): ModelSchemaInfoInterface
     {
@@ -100,6 +105,8 @@ trait MigrationTrait
 
     /**
      * @return AbstractSchemaManager
+     * @throws ContainerExceptionInterface
+     * @throws NotFoundExceptionInterface
      */
     protected function getSchemaManager(): AbstractSchemaManager
     {
@@ -107,12 +114,12 @@ trait MigrationTrait
     }
 
     /**
-     * @param string    $modelClass
+     * @param string $modelClass
      * @param Closure[] $expressions
-     *
      * @return Table
-     *
+     * @throws ContainerExceptionInterface
      * @throws DBALException
+     * @throws NotFoundExceptionInterface
      */
     protected function createTable(string $modelClass, array $expressions = []): Table
     {
@@ -122,9 +129,8 @@ trait MigrationTrait
             "Class `$modelClass` is not found in model Schemas."
         );
         $tableName = $this->getModelSchemas()->getTable($modelClass);
-        $table     = new Table($tableName);
+        $table = new Table($tableName);
         foreach ($expressions as $expression) {
-            /** @var Closure $expression */
             $expression($table, $context);
         }
 
@@ -135,8 +141,9 @@ trait MigrationTrait
 
     /**
      * @param string $modelClass
-     *
      * @return void
+     * @throws ContainerExceptionInterface
+     * @throws NotFoundExceptionInterface
      */
     protected function dropTableIfExists(string $modelClass): void
     {
@@ -144,7 +151,7 @@ trait MigrationTrait
             $this->getModelSchemas()->hasClass($modelClass),
             "Class `$modelClass` is not found in model Schemas."
         );
-        $tableName     = $this->getModelSchemas()->getTable($modelClass);
+        $tableName = $this->getModelSchemas()->getTable($modelClass);
         $schemaManager = $this->getSchemaManager();
 
         if ($schemaManager->tablesExist([$tableName]) === true) {
@@ -154,11 +161,11 @@ trait MigrationTrait
 
     /**
      * @param string $name
-     * @param array  $values
-     *
+     * @param array $values
      * @return void
-     *
+     * @throws ContainerExceptionInterface
      * @throws DBALException
+     * @throws NotFoundExceptionInterface
      */
     protected function createEnum(string $name, array $values): void
     {
@@ -183,17 +190,17 @@ trait MigrationTrait
         $connection = $this->getConnection();
         if ($connection->getDriver() === 'pdo_pgsql') {
             $valueList = implode("', '", $values);
-            $sql       = "CREATE TYPE $name AS ENUM ('$valueList');";
+            $sql = "CREATE TYPE $name AS ENUM ('$valueList');";
             $connection->executeStatement($sql);
         }
     }
 
     /**
      * @param string $name
-     *
      * @return void
-     *
+     * @throws ContainerExceptionInterface
      * @throws DBALException
+     * @throws NotFoundExceptionInterface
      */
     protected function dropEnumIfExists(string $name): void
     {
@@ -202,7 +209,7 @@ trait MigrationTrait
         $connection = $this->getConnection();
         if ($connection->getDriver() === 'pdo_pgsql') {
             $name = $connection->quoteIdentifier($name);
-            $sql  = "DROP TYPE IF EXISTS $name;";
+            $sql = "DROP TYPE IF EXISTS $name;";
             $connection->executeStatement($sql);
         }
     }
@@ -210,13 +217,10 @@ trait MigrationTrait
     /**
      * @param string $columnName
      * @param string $enumName
-     * @param bool   $notNullable
-     *
+     * @param bool $notNullable
      * @return Closure
-     *
-     * @SuppressWarnings(PHPMD.BooleanArgumentFlag)
-     * @SuppressWarnings(PHPMD.ElseExpression)
-     * @SuppressWarnings(PHPMD.StaticAccess)
+     * @throws ContainerExceptionInterface
+     * @throws NotFoundExceptionInterface
      */
     protected function useEnum(string $columnName, string $enumName, bool $notNullable = true): Closure
     {
@@ -243,7 +247,6 @@ trait MigrationTrait
 
     /**
      * @param string $name
-     *
      * @return Closure
      */
     protected function primaryInt(string $name): Closure
@@ -256,7 +259,6 @@ trait MigrationTrait
 
     /**
      * @param string $name
-     *
      * @return Closure
      */
     protected function primaryString(string $name): Closure
@@ -269,9 +271,8 @@ trait MigrationTrait
     }
 
     /**
-     * @param string   $name
+     * @param string $name
      * @param null|int $default
-     *
      * @return Closure
      */
     protected function int(string $name, int $default = null): Closure
@@ -283,9 +284,8 @@ trait MigrationTrait
     }
 
     /**
-     * @param string   $name
+     * @param string $name
      * @param null|int $default
-     *
      * @return Closure
      */
     protected function nullableInt(string $name, int $default = null): Closure
@@ -296,9 +296,8 @@ trait MigrationTrait
     }
 
     /**
-     * @param string   $name
+     * @param string $name
      * @param null|int $default
-     *
      * @return Closure
      */
     protected function unsignedInt(string $name, int $default = null): Closure
@@ -307,9 +306,8 @@ trait MigrationTrait
     }
 
     /**
-     * @param string   $name
+     * @param string $name
      * @param null|int $default
-     *
      * @return Closure
      */
     protected function nullableUnsignedInt(string $name, int $default = null): Closure
@@ -318,10 +316,8 @@ trait MigrationTrait
     }
 
     /**
-     * @param string     $name
-     *
+     * @param string $name
      * @param float|null $default
-     *
      * @return Closure
      */
     protected function float(string $name, float $default = null): Closure
@@ -335,9 +331,8 @@ trait MigrationTrait
     }
 
     /**
-     * @param string     $name
+     * @param string $name
      * @param float|null $default
-     *
      * @return Closure
      */
     protected function nullableFloat(string $name, float $default = null): Closure
@@ -348,10 +343,8 @@ trait MigrationTrait
     }
 
     /**
-     * @param string      $name
-     *
+     * @param string $name
      * @param string|null $default
-     *
      * @return Closure
      */
     protected function string(string $name, string $default = null): Closure
@@ -364,10 +357,8 @@ trait MigrationTrait
     }
 
     /**
-     * @param string      $name
-     *
+     * @param string $name
      * @param string|null $default
-     *
      * @return Closure
      */
     protected function nullableString(string $name, string $default = null): Closure
@@ -379,10 +370,8 @@ trait MigrationTrait
     }
 
     /**
-     * @param string      $name
-     *
+     * @param string $name
      * @param string|null $default
-     *
      * @return Closure
      */
     protected function text(string $name, string $default = null): Closure
@@ -394,10 +383,8 @@ trait MigrationTrait
     }
 
     /**
-     * @param string      $name
-     *
+     * @param string $name
      * @param string|null $default
-     *
      * @return Closure
      */
     protected function nullableText(string $name, string $default = null): Closure
@@ -408,9 +395,8 @@ trait MigrationTrait
     }
 
     /**
-     * @param string    $name
+     * @param string $name
      * @param null|bool $default
-     *
      * @return Closure
      */
     protected function bool(string $name, bool $default = null): Closure
@@ -422,9 +408,8 @@ trait MigrationTrait
     }
 
     /**
-     * @param string    $name
+     * @param string $name
      * @param bool|null $default
-     *
      * @return Closure
      */
     protected function nullableBool(string $name, bool $default = null): Closure
@@ -436,7 +421,6 @@ trait MigrationTrait
 
     /**
      * @param string $name
-     *
      * @return Closure
      */
     protected function binary(string $name): Closure
@@ -448,7 +432,6 @@ trait MigrationTrait
 
     /**
      * @param string $name
-     *
      * @return Closure
      */
     protected function nullableBinary(string $name): Closure
@@ -460,11 +443,11 @@ trait MigrationTrait
 
     /**
      * @param string $name
-     * @param array  $values
-     *
+     * @param array $values
      * @return Closure
-     *
+     * @throws ContainerExceptionInterface
      * @throws DBALException
+     * @throws NotFoundExceptionInterface
      */
     protected function enum(string $name, array $values): Closure
     {
@@ -475,11 +458,11 @@ trait MigrationTrait
 
     /**
      * @param string $name
-     * @param array  $values
-     *
+     * @param array $values
      * @return Closure
-     *
+     * @throws ContainerExceptionInterface
      * @throws DBALException
+     * @throws NotFoundExceptionInterface
      */
     protected function nullableEnum(string $name, array $values): Closure
     {
@@ -520,7 +503,6 @@ trait MigrationTrait
 
     /**
      * @param string $name
-     *
      * @return Closure
      */
     protected function datetime(string $name): Closure
@@ -532,7 +514,6 @@ trait MigrationTrait
 
     /**
      * @param string $name
-     *
      * @return Closure
      */
     protected function nullableDatetime(string $name): Closure
@@ -544,7 +525,6 @@ trait MigrationTrait
 
     /**
      * @param string $name
-     *
      * @return Closure
      */
     protected function date(string $name): Closure
@@ -556,7 +536,6 @@ trait MigrationTrait
 
     /**
      * @param string $name
-     *
      * @return Closure
      */
     protected function nullableDate(string $name): Closure
@@ -568,7 +547,6 @@ trait MigrationTrait
 
     /**
      * @param string $name
-     *
      * @return Closure
      */
     protected function time(string $name): Closure
@@ -580,7 +558,6 @@ trait MigrationTrait
 
     /**
      * @param string $name
-     *
      * @return Closure
      */
     protected function nullableTime(string $name): Closure
@@ -592,7 +569,6 @@ trait MigrationTrait
 
     /**
      * @param string $name
-     *
      * @return Closure
      */
     protected function json(string $name): Closure
@@ -604,7 +580,6 @@ trait MigrationTrait
 
     /**
      * @param string $name
-     *
      * @return Closure
      */
     protected function nullableJson(string $name): Closure
@@ -616,7 +591,6 @@ trait MigrationTrait
 
     /**
      * @param string $name
-     *
      * @return Closure
      */
     protected function primaryUuid(string $name): Closure
@@ -645,7 +619,6 @@ trait MigrationTrait
 
     /**
      * @param string $name
-     *
      * @return Closure
      */
     protected function uuid(string $name): Closure
@@ -657,7 +630,6 @@ trait MigrationTrait
 
     /**
      * @param string $name
-     *
      * @return Closure
      */
     protected function nullableUuid(string $name): Closure
@@ -669,7 +641,6 @@ trait MigrationTrait
 
     /**
      * @param string[] $names
-     *
      * @return Closure
      */
     protected function unique(array $names): Closure
@@ -681,7 +652,6 @@ trait MigrationTrait
 
     /**
      * @param string[] $names
-     *
      * @return Closure
      */
     protected function searchable(array $names): Closure
@@ -695,17 +665,13 @@ trait MigrationTrait
      * @param string $column
      * @param string $referredClass
      * @param string $onDeleteRestriction
-     *
      * @return Closure
-     *
-     * @SuppressWarnings(PHPMD.BooleanArgumentFlag)
      */
     protected function foreignRelationship(
         string $column,
         string $referredClass,
         string $onDeleteRestriction = RelationshipRestrictions::RESTRICT
-    ): Closure
-    {
+    ): Closure {
         return function (
             Table $table,
             MigrationContextInterface $context
@@ -714,9 +680,9 @@ trait MigrationTrait
             $referredClass,
             $onDeleteRestriction
         ) {
-            $tableName    = $this->getTableNameForClass($referredClass);
-            $pkName       = $this->getModelSchemas()->getPrimaryKey($referredClass);
-            $columnType   = $this->getModelSchemas()->getAttributeType($context->getModelClass(), $column);
+            $tableName = $this->getTableNameForClass($referredClass);
+            $pkName = $this->getModelSchemas()->getPrimaryKey($referredClass);
+            $columnType = $this->getModelSchemas()->getAttributeType($context->getModelClass(), $column);
             $columnLength = $columnType === Types::STRING ?
                 $this->getModelSchemas()->getAttributeLength($context->getModelClass(), $column) : null;
 
@@ -737,17 +703,13 @@ trait MigrationTrait
      * @param string $column
      * @param string $referredClass
      * @param string $onDeleteRestriction
-     *
      * @return Closure
-     *
-     * @SuppressWarnings(PHPMD.BooleanArgumentFlag)
      */
     protected function nullableForeignRelationship(
         string $column,
         string $referredClass,
         string $onDeleteRestriction = RelationshipRestrictions::RESTRICT
-    ): Closure
-    {
+    ): Closure {
         return function (
             Table $table,
             MigrationContextInterface $context
@@ -756,9 +718,9 @@ trait MigrationTrait
             $referredClass,
             $onDeleteRestriction
         ) {
-            $tableName    = $this->getTableNameForClass($referredClass);
-            $pkName       = $this->getModelSchemas()->getPrimaryKey($referredClass);
-            $columnType   = $this->getModelSchemas()->getAttributeType($context->getModelClass(), $column);
+            $tableName = $this->getTableNameForClass($referredClass);
+            $pkName = $this->getModelSchemas()->getPrimaryKey($referredClass);
+            $columnType = $this->getModelSchemas()->getAttributeType($context->getModelClass(), $column);
             $columnLength = $columnType === Types::STRING ?
                 $this->getModelSchemas()->getAttributeLength($context->getModelClass(), $column) : null;
 
@@ -769,17 +731,14 @@ trait MigrationTrait
         };
     }
 
-    /** @noinspection PhpTooManyParametersInspection
-     * @param string   $localKey
-     * @param string   $foreignTable
-     * @param string   $foreignKey
-     * @param string   $type
+    /**
+     * @param string $localKey
+     * @param string $foreignTable
+     * @param string $foreignKey
+     * @param string $type
      * @param int|null $length
-     * @param string   $onDeleteRestriction
-     *
+     * @param string $onDeleteRestriction
      * @return Closure
-     *
-     * @SuppressWarnings(PHPMD.BooleanArgumentFlag)
      */
     protected function foreignColumn(
         string $localKey,
@@ -788,8 +747,7 @@ trait MigrationTrait
         string $type,
         ?int $length = null,
         string $onDeleteRestriction = RelationshipRestrictions::RESTRICT
-    ): Closure
-    {
+    ): Closure {
         return $this->foreignColumnImpl(
             $localKey,
             $foreignTable,
@@ -801,17 +759,14 @@ trait MigrationTrait
         );
     }
 
-    /** @noinspection PhpTooManyParametersInspection
-     * @param string   $localKey
-     * @param string   $foreignTable
-     * @param string   $foreignKey
-     * @param string   $type
+    /**
+     * @param string $localKey
+     * @param string $foreignTable
+     * @param string $foreignKey
+     * @param string $type
      * @param int|null $length
-     * @param string   $onDeleteRestriction
-     *
+     * @param string $onDeleteRestriction
      * @return Closure
-     *
-     * @SuppressWarnings(PHPMD.BooleanArgumentFlag)
      */
     protected function nullableForeignColumn(
         string $localKey,
@@ -820,8 +775,7 @@ trait MigrationTrait
         string $type,
         ?int $length = null,
         string $onDeleteRestriction = RelationshipRestrictions::RESTRICT
-    ): Closure
-    {
+    ): Closure {
         return $this->foreignColumnImpl(
             $localKey,
             $foreignTable,
@@ -836,39 +790,32 @@ trait MigrationTrait
     /**
      * @param string $name
      * @param string $onDeleteRestriction
-     *
      * @return Closure
-     *
-     * @SuppressWarnings(PHPMD.BooleanArgumentFlag)
      */
     protected function nullableRelationship(
         string $name,
         string $onDeleteRestriction = RelationshipRestrictions::RESTRICT
-    ): Closure
-    {
+    ): Closure {
         return $this->relationshipImpl($name, false, $onDeleteRestriction);
     }
 
     /**
      * @param string $name
      * @param string $onDeleteRestriction
-     *
      * @return Closure
-     *
-     * @SuppressWarnings(PHPMD.BooleanArgumentFlag)
      */
     protected function relationship(
         string $name,
         string $onDeleteRestriction = RelationshipRestrictions::RESTRICT
-    ): Closure
-    {
+    ): Closure {
         return $this->relationshipImpl($name, true, $onDeleteRestriction);
     }
 
     /**
      * @param string $modelClass
-     *
      * @return string
+     * @throws ContainerExceptionInterface
+     * @throws NotFoundExceptionInterface
      */
     protected function getTableNameForClass(string $modelClass): string
     {
@@ -877,15 +824,12 @@ trait MigrationTrait
             "Class `$modelClass` is not found in model Schemas."
         );
 
-        $tableName = $this->getModelSchemas()->getTable($modelClass);
-
-        return $tableName;
+        return $this->getModelSchemas()->getTable($modelClass);
     }
 
     /**
      * @param string $name
-     * @param mixed  $value
-     *
+     * @param mixed $value
      * @return Closure
      */
     protected function defaultValue(string $name, $value): Closure
@@ -898,7 +842,6 @@ trait MigrationTrait
 
     /**
      * @param string $name
-     *
      * @return Closure
      */
     protected function nullableValue(string $name): Closure
@@ -911,7 +854,6 @@ trait MigrationTrait
 
     /**
      * @param string $name
-     *
      * @return Closure
      */
     protected function notNullableValue(string $name): Closure
@@ -923,10 +865,9 @@ trait MigrationTrait
     }
 
     /**
-     * @param string     $name
-     * @param bool       $notNullable
+     * @param string $name
+     * @param bool $notNullable
      * @param null|mixed $default
-     *
      * @return Closure
      */
     private function unsignedIntImpl(string $name, bool $notNullable, $default = null): Closure
@@ -937,15 +878,14 @@ trait MigrationTrait
         };
     }
 
-    /** @noinspection PhpTooManyParametersInspection
-     * @param string   $localKey
-     * @param string   $foreignTable
-     * @param string   $foreignKey
-     * @param string   $type
+    /**
+     * @param string $localKey
+     * @param string $foreignTable
+     * @param string $foreignKey
+     * @param string $type
      * @param int|null $length
-     * @param bool     $notNullable
-     * @param string   $onDeleteRestriction
-     *
+     * @param bool $notNullable
+     * @param string $onDeleteRestriction
      * @return Closure
      */
     private function foreignColumnImpl(
@@ -956,8 +896,7 @@ trait MigrationTrait
         ?int $length,
         bool $notNullable,
         string $onDeleteRestriction
-    ): Closure
-    {
+    ): Closure {
         return function (Table $table) use (
             $localKey,
             $foreignTable,
@@ -980,9 +919,8 @@ trait MigrationTrait
 
     /**
      * @param string $name
-     * @param bool   $notNullable
+     * @param bool $notNullable
      * @param string $onDeleteRestriction
-     *
      * @return Closure
      */
     private function relationshipImpl(string $name, bool $notNullable, string $onDeleteRestriction): Closure
@@ -1006,8 +944,8 @@ trait MigrationTrait
                 "Relationship `$name` for model `$modelClass` must be `belongsTo`."
             );
 
-            $localKey     = $this->getModelSchemas()->getForeignKey($modelClass, $name);
-            $columnType   = $this->getModelSchemas()->getAttributeType($modelClass, $localKey);
+            $localKey = $this->getModelSchemas()->getForeignKey($modelClass, $name);
+            $columnType = $this->getModelSchemas()->getAttributeType($modelClass, $localKey);
             $columnLength = $columnType === Types::STRING ?
                 $this->getModelSchemas()->getAttributeLength($modelClass, $localKey) : null;
 
@@ -1017,7 +955,7 @@ trait MigrationTrait
                 "Class `$otherModelClass` is not found in model Schemas."
             );
             $foreignTable = $this->getModelSchemas()->getTable($otherModelClass);
-            $foreignKey   = $this->getModelSchemas()->getPrimaryKey($otherModelClass);
+            $foreignKey = $this->getModelSchemas()->getPrimaryKey($otherModelClass);
 
             $fkClosure = $this->foreignColumnImpl(
                 $localKey,

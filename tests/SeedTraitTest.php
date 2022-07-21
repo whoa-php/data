@@ -42,24 +42,23 @@ use Psr\Container\ContainerInterface;
  */
 class SeedTraitTest extends TestCase
 {
-    const TEST_MODEL_CLASS = 'TestClass';
-    const TEST_COLUMN_NAME = 'value';
+    public const TEST_MODEL_CLASS = 'TestClass';
+    public const TEST_COLUMN_NAME = 'value';
 
     /**
      * @var Connection
      */
-    private $connection;
+    private Connection $connection;
 
     /**
      * Test seeds.
-     *
      * @throws DBALException
      */
     public function testSeeds()
     {
-        $tableName  = 'table_name';
+        $tableName = 'table_name';
         $columnName = self::TEST_COLUMN_NAME;
-        $types      = [$columnName => Types::STRING];
+        $types = [$columnName => Types::STRING];
 
         $modelSchemas = Mockery::mock(ModelSchemaInfoInterface::class);
 
@@ -67,7 +66,7 @@ class SeedTraitTest extends TestCase
         $this->prepareTable($modelSchemas, self::TEST_MODEL_CLASS, $tableName, $types);
 
         $manager = $this->connection->getSchemaManager();
-        $table   = new Table(
+        $table = new Table(
             $tableName,
             [new Column($columnName, Type::getType(Types::STRING))]
         );
@@ -79,7 +78,6 @@ class SeedTraitTest extends TestCase
 
     /**
      * @param ContainerInterface $container
-     *
      * @return SeedInterface
      */
     private function createSeed(ContainerInterface $container): SeedInterface
@@ -90,7 +88,7 @@ class SeedTraitTest extends TestCase
             /**
              * @var TestCase
              */
-            private $test;
+            private TestCase $test;
 
             /**
              * @param TestCase $test
@@ -136,14 +134,12 @@ class SeedTraitTest extends TestCase
 
     /**
      * @param MockInterface $modelSchemas
-     *
      * @return ContainerInterface
-     *
      * @throws DBALException
      */
     private function createContainer(MockInterface $modelSchemas): ContainerInterface
     {
-        $container                    = new TestContainer();
+        $container = new TestContainer();
         $container[Connection::class] = $this->connection = $this->createConnection();
 
         $container[ModelSchemaInfoInterface::class] = $modelSchemas;
@@ -153,7 +149,6 @@ class SeedTraitTest extends TestCase
 
     /**
      * @return Connection
-     *
      * @throws DBALException
      */
     private function createConnection(): Connection
@@ -166,14 +161,17 @@ class SeedTraitTest extends TestCase
 
     /**
      * @param MockInterface $mock
-     * @param string        $modelClass
-     * @param string        $tableName
-     * @param array         $attributeTypes
-     *
+     * @param string $modelClass
+     * @param string $tableName
+     * @param array $attributeTypes
      * @return Mock
      */
-    private function prepareTable($mock, string $modelClass, string $tableName, array $attributeTypes)
-    {
+    private function prepareTable(
+        MockInterface $mock,
+        string $modelClass,
+        string $tableName,
+        array $attributeTypes
+    ): MockInterface {
         /** @var Mock $mock */
         $mock->shouldReceive('getTable')->zeroOrMoreTimes()->with($modelClass)->andReturn($tableName);
         $mock->shouldReceive('getAttributeTypes')->zeroOrMoreTimes()->with($modelClass)->andReturn($attributeTypes);

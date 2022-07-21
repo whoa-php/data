@@ -28,6 +28,8 @@ use Doctrine\DBAL\Platforms\AbstractPlatform;
 use Doctrine\DBAL\Schema\Table;
 use Doctrine\DBAL\Types\Type;
 use Doctrine\DBAL\Types\Types;
+use Psr\Container\ContainerExceptionInterface;
+use Psr\Container\NotFoundExceptionInterface;
 use Whoa\Contracts\Data\MigrationInterface;
 use Whoa\Contracts\Data\ModelSchemaInfoInterface;
 use Whoa\Contracts\Data\RelationshipTypes;
@@ -53,7 +55,7 @@ class MigrationTraitTest extends TestCase implements MigrationInterface
     /**
      * @var Connection
      */
-    private $connection;
+    private Connection $connection;
 
     /**
      * @inheritDoc
@@ -68,39 +70,40 @@ class MigrationTraitTest extends TestCase implements MigrationInterface
 
     /**
      * Test columns migration.
-     *
      * @throws DBALException
+     * @throws ContainerExceptionInterface
+     * @throws NotFoundExceptionInterface
      */
     public function testColumns(): void
     {
-        $modelClass             = 'TestModel1';
-        $columnIntPrimary       = 'col_int_id';
-        $tableName              = 'table_name';
-        $columnNonNullString    = 'col_non_null_string';
-        $columnNullableString   = 'col_nullable_string';
-        $columnInt              = 'col_int';
-        $columnNullableInt      = 'col_nullable_int';
-        $columnInt2             = 'col_int_2';
-        $columnNullableInt2     = 'col_nullable_int_2';
-        $columnStringLength     = 100;
-        $columnNonNullText      = 'col_non_null_text';
-        $columnNullableText     = 'col_nullable_text';
-        $columnUInt             = 'col_u_int';
-        $columnNullableUInt     = 'col_nullable_u_int';
-        $columnFloat            = 'col_float';
-        $columnBool             = 'col_bool';
-        $columnBinary           = 'col_binary';
-        $columnNonNullDate      = 'col_non_null_date';
-        $columnNullableDate     = 'col_nullable_date';
-        $columnNonNullDateTime  = 'col_non_null_datetime';
+        $modelClass = 'TestModel1';
+        $columnIntPrimary = 'col_int_id';
+        $tableName = 'table_name';
+        $columnNonNullString = 'col_non_null_string';
+        $columnNullableString = 'col_nullable_string';
+        $columnInt = 'col_int';
+        $columnNullableInt = 'col_nullable_int';
+        $columnInt2 = 'col_int_2';
+        $columnNullableInt2 = 'col_nullable_int_2';
+        $columnStringLength = 100;
+        $columnNonNullText = 'col_non_null_text';
+        $columnNullableText = 'col_nullable_text';
+        $columnUInt = 'col_u_int';
+        $columnNullableUInt = 'col_nullable_u_int';
+        $columnFloat = 'col_float';
+        $columnBool = 'col_bool';
+        $columnBinary = 'col_binary';
+        $columnNonNullDate = 'col_non_null_date';
+        $columnNullableDate = 'col_nullable_date';
+        $columnNonNullDateTime = 'col_non_null_datetime';
         $columnNullableDateTime = 'col_nullable_datetime';
 
-        $columnUuid         = 'col_uuid';
+        $columnUuid = 'col_uuid';
         $columnNullableUuid = 'col_nullable_uuid';
-        $columnTime         = 'col_time';
+        $columnTime = 'col_time';
         $columnNullableTime = 'col_nullable_time';
 
-        $defaultUInt    = 123;
+        $defaultUInt = 123;
         $columnToCreate = [
             $this->primaryInt($columnIntPrimary),
             $this->string($columnNonNullString),
@@ -141,7 +144,7 @@ class MigrationTraitTest extends TestCase implements MigrationInterface
 
             $this->nullableTime($columnNullableTime),
         ];
-        $migration      = new TestTableMigration($modelClass, $columnToCreate);
+        $migration = new TestTableMigration($modelClass, $columnToCreate);
 
         $modelSchemas = Mockery::mock(ModelSchemaInfoInterface::class);
         $this->prepareTable($modelSchemas, $modelClass, $tableName, 2);
@@ -161,7 +164,7 @@ class MigrationTraitTest extends TestCase implements MigrationInterface
         $this->assertTrue($manager->tablesExist([$tableName]));
         $columnsCreated = $manager->listTableColumns($tableName);
         // +2 for timestamps and -5 for searchable, unique, default value, nullable and not nullable value.
-        /** @noinspection PhpParamsInspection */
+
         $this->assertCount(count($columnToCreate) - 3, $columnsCreated);
 
         $this->assertEquals('integer', $columnsCreated[$columnIntPrimary]->getType()->getName());
@@ -229,13 +232,13 @@ class MigrationTraitTest extends TestCase implements MigrationInterface
         $this->assertEquals('date_immutable', $columnsCreated[$columnNonNullDate]->getType()->getName());
         $this->assertTrue($columnsCreated[$columnNonNullDate]->getNotnull());
 
-        $this->assertEquals('limoncelloUuid', $columnsCreated[$columnUuid]->getType()->getName());
+        $this->assertEquals('whoaUuid', $columnsCreated[$columnUuid]->getType()->getName());
         $this->assertTrue($columnsCreated[$columnUuid]->getNotnull());
 
-        $this->assertEquals('limoncelloUuid', $columnsCreated[UF::FIELD_UUID]->getType()->getName());
+        $this->assertEquals('whoaUuid', $columnsCreated[UF::FIELD_UUID]->getType()->getName());
         $this->assertTrue($columnsCreated[UF::FIELD_UUID]->getNotnull());
 
-        $this->assertEquals('limoncelloUuid', $columnsCreated[$columnNullableUuid]->getType()->getName());
+        $this->assertEquals('whoaUuid', $columnsCreated[$columnNullableUuid]->getType()->getName());
         $this->assertFalse($columnsCreated[$columnNullableUuid]->getNotnull());
 
         $this->assertEquals('time_immutable', $columnsCreated[$columnTime]->getType()->getName());
@@ -250,24 +253,23 @@ class MigrationTraitTest extends TestCase implements MigrationInterface
 
     /**
      * Test relationship migration.
-     *
      * @throws DBALException
      */
     public function testRelationships(): void
     {
         $modelClass1 = 'TestModel1';
-        $table1      = 'table_1';
-        $pk1         = 'col_pk1';
+        $table1 = 'table_1';
+        $pk1 = 'col_pk1';
         $modelClass2 = 'TestModel2';
-        $table2      = 'table_2';
-        $pk2         = 'col_pk2';
-        $fk2_1       = 'col_fk2_1';
-        $fk2_2       = 'col_fk2_2';
-        $fk2_3       = 'col_fk2_3';
-        $fk2_4       = 'col_fk2_4';
-        $rel2_1      = 'rel_2_1_to_1';
-        $rel2_3      = 'rel_2_3_to_1';
-        $length      = 100;
+        $table2 = 'table_2';
+        $pk2 = 'col_pk2';
+        $fk2_1 = 'col_fk2_1';
+        $fk2_2 = 'col_fk2_2';
+        $fk2_3 = 'col_fk2_3';
+        $fk2_4 = 'col_fk2_4';
+        $rel2_1 = 'rel_2_1_to_1';
+        $rel2_3 = 'rel_2_3_to_1';
+        $length = 100;
 
         $modelSchemas = Mockery::mock(ModelSchemaInfoInterface::class);
         $this->prepareTable($modelSchemas, $modelClass1, $table1);
@@ -286,7 +288,7 @@ class MigrationTraitTest extends TestCase implements MigrationInterface
         $columnToCreate1 = [
             $this->primaryInt($pk1),
         ];
-        $migration1      = new TestTableMigration($modelClass1, $columnToCreate1);
+        $migration1 = new TestTableMigration($modelClass1, $columnToCreate1);
         $migration1->init($container)->migrate();
 
         $columnToCreate2 = [
@@ -296,19 +298,21 @@ class MigrationTraitTest extends TestCase implements MigrationInterface
             $this->nullableRelationship($rel2_3),
             $this->nullableForeignRelationship($fk2_4, $modelClass1),
         ];
-        $migration2      = new TestTableMigration($modelClass2, $columnToCreate2);
+        $migration2 = new TestTableMigration($modelClass2, $columnToCreate2);
         $migration2->init($container)->migrate();
     }
 
     /**
+     * @throws ContainerExceptionInterface
      * @throws DBALException
+     * @throws NotFoundExceptionInterface
      */
     public function testEnum(): void
     {
         $container = $this->createContainer();
         $this->init($container);
         $connection = $this->createConnection();
-        $platform   = $connection->getDatabasePlatform();
+        $platform = $connection->getDatabasePlatform();
 
         $table = new Table('table_name');
 
@@ -316,7 +320,7 @@ class MigrationTraitTest extends TestCase implements MigrationInterface
         ($this->nullableEnum('enum2', ['val21', 'val22']))($table);
 
         $columns = $table->getColumns();
-        /** @noinspection PhpParamsInspection */
+
         $this->assertCount(2, $columns);
         $this->assertEquals(
             "ENUM('val11','val12')",
@@ -331,7 +335,9 @@ class MigrationTraitTest extends TestCase implements MigrationInterface
     }
 
     /**
+     * @throws ContainerExceptionInterface
      * @throws DBALException
+     * @throws NotFoundExceptionInterface
      */
     public function testCreatePgEnum(): void
     {
@@ -351,7 +357,9 @@ class MigrationTraitTest extends TestCase implements MigrationInterface
     }
 
     /**
+     * @throws ContainerExceptionInterface
      * @throws DBALException
+     * @throws NotFoundExceptionInterface
      */
     public function testDropPgEnumIfExists(): void
     {
@@ -372,7 +380,8 @@ class MigrationTraitTest extends TestCase implements MigrationInterface
     }
 
     /**
-     * @throws DBALException
+     * @throws ContainerExceptionInterface
+     * @throws NotFoundExceptionInterface
      */
     public function testUsePgEnum(): void
     {
@@ -380,14 +389,14 @@ class MigrationTraitTest extends TestCase implements MigrationInterface
         $this->init($container);
 
         $container[Connection::class] = $mockConnection = Mockery::mock(Connection::class);
-        $mockConnection->shouldReceive('getDriver')->once()->withNoArgs()->andReturn('pdo_pgsql');;
+        $mockConnection->shouldReceive('getDriver')->once()->withNoArgs()->andReturn('pdo_pgsql');
 
         $closure = $this->useEnum('my_column', 'myEnum');
-        $table   = new Table('table_name');
+        $table = new Table('table_name');
         call_user_func($closure, $table);
 
         $columns = $table->getColumns();
-        /** @noinspection PhpParamsInspection */
+
         $this->assertCount(1, $columns);
         $column = $columns['my_column'];
         $this->assertEquals(RawNameType::class, get_class($column->getType()));
@@ -412,14 +421,12 @@ class MigrationTraitTest extends TestCase implements MigrationInterface
 
     /**
      * @param MockInterface|null $modelSchemas
-     *
      * @return ContainerInterface
-     *
      * @throws DBALException
      */
     private function createContainer(MockInterface $modelSchemas = null): ContainerInterface
     {
-        $container                    = new TestContainer();
+        $container = new TestContainer();
         $container[Connection::class] = $this->connection = $this->createConnection();
 
         if ($modelSchemas !== null) {
@@ -431,17 +438,16 @@ class MigrationTraitTest extends TestCase implements MigrationInterface
 
     /**
      * @return Connection
-     *
      * @throws DBALException
      */
     private function createConnection(): Connection
     {
         // user and password are needed for HHVM
         $connection = DriverManager::getConnection([
-            'url'      => 'sqlite:///',
-            'memory'   => true,
-            'dbname'   => 'test',
-            'user'     => '',
+            'url' => 'sqlite:///',
+            'memory' => true,
+            'dbname' => 'test',
+            'user' => '',
             'password' => '',
         ]);
         $this->assertNotSame(false, $connection->exec('PRAGMA foreign_keys = ON;'));
@@ -451,10 +457,9 @@ class MigrationTraitTest extends TestCase implements MigrationInterface
 
     /**
      * @param MockInterface $mock
-     * @param string        $modelClass
-     * @param string        $tableName
-     * @param int           $times
-     *
+     * @param string $modelClass
+     * @param string $tableName
+     * @param int $times
      * @return Mock
      */
     private function prepareTable(MockInterface $mock, string $modelClass, string $tableName, int $times = 1)
@@ -468,13 +473,12 @@ class MigrationTraitTest extends TestCase implements MigrationInterface
 
     /**
      * @param MockInterface $mock
-     * @param string        $modelClass
-     * @param string        $fieldName
-     * @param int           $length
-     *
+     * @param string $modelClass
+     * @param string $fieldName
+     * @param int $length
      * @return Mock
      */
-    private function prepareAttributeLength($mock, string $modelClass, string $fieldName, int $length)
+    private function prepareAttributeLength(MockInterface $mock, string $modelClass, string $fieldName, int $length)
     {
         /** @var Mock $mock */
         $mock->shouldReceive('getAttributeLength')->once()->with($modelClass, $fieldName)->andReturn($length);
@@ -484,8 +488,7 @@ class MigrationTraitTest extends TestCase implements MigrationInterface
 
     /**
      * @param MockInterface $mock
-     * @param string        $modelClass
-     *
+     * @param string $modelClass
      * @return Mock
      */
     private function prepareTimestamps(MockInterface $mock, string $modelClass)
@@ -503,8 +506,7 @@ class MigrationTraitTest extends TestCase implements MigrationInterface
 
     /**
      * @param MockInterface $mock
-     * @param string        $modelClass
-     *
+     * @param string $modelClass
      * @return Mock
      */
     private function prepareDefaultUuid(MockInterface $mock, string $modelClass)
@@ -516,17 +518,16 @@ class MigrationTraitTest extends TestCase implements MigrationInterface
         return $mock;
     }
 
-    /** @noinspection PhpTooManyParametersInspection
+    /**
      * @param MockInterface $mock
-     * @param string        $modelClass
-     * @param string        $relName
-     * @param string        $fkName
-     * @param string        $reverseClass
-     * @param string        $reverseTable
-     * @param string        $reversePk
-     * @param int           $relType
-     * @param string        $colType
-     *
+     * @param string $modelClass
+     * @param string $relName
+     * @param string $fkName
+     * @param string $reverseClass
+     * @param string $reverseTable
+     * @param string $reversePk
+     * @param int $relType
+     * @param string $colType
      * @return Mock
      */
     private function prepareRelationship(
@@ -539,8 +540,7 @@ class MigrationTraitTest extends TestCase implements MigrationInterface
         string $reversePk,
         int $relType = RelationshipTypes::BELONGS_TO,
         string $colType = Types::INTEGER
-    )
-    {
+    ) {
         /** @var Mock $mock */
         $mock->shouldReceive('hasRelationship')->once()->with($modelClass, $relName)->andReturn(true);
         $mock->shouldReceive('getRelationshipType')->once()->with($modelClass, $relName)->andReturn($relType);
@@ -553,15 +553,14 @@ class MigrationTraitTest extends TestCase implements MigrationInterface
         return $mock;
     }
 
-    /** @noinspection PhpTooManyParametersInspection
+    /**
      * @param MockInterface $mock
-     * @param string        $modelClass
-     * @param string        $fkName
-     * @param string        $reverseClass
-     * @param string        $reverseTable
-     * @param string        $reversePk
-     * @param string        $colType
-     *
+     * @param string $modelClass
+     * @param string $fkName
+     * @param string $reverseClass
+     * @param string $reverseTable
+     * @param string $reversePk
+     * @param string $colType
      * @return Mock
      */
     private function prepareForeignRelationship(
@@ -572,8 +571,7 @@ class MigrationTraitTest extends TestCase implements MigrationInterface
         string $reverseTable,
         string $reversePk,
         string $colType = Types::INTEGER
-    )
-    {
+    ) {
         /** @var Mock $mock */
         $mock->shouldReceive('hasClass')->times(2)->with($reverseClass)->andReturn(true);
         $mock->shouldReceive('getTable')->once()->with($reverseClass)->andReturn($reverseTable);
